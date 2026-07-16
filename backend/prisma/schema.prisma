@@ -1,0 +1,215 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Utilisateur {
+  id_user            Int                 @id @unique @default(autoincrement())
+  nom                String              @db.VarChar(100)
+  email              String              @unique @db.VarChar(100)
+  password_hash      String              @db.VarChar(255)
+  role               String              @db.VarChar(30)
+  id_etab            Int?
+  photo_profil       String              @default("default-avatar.png") @db.VarChar(255)
+  actif              Boolean             @default(true)
+  date_creation      DateTime            @default(now())
+  derniere_connexion DateTime?
+  est_en_ligne       Boolean             @default(false)
+  demandes_admin     DemandeReparation[] @relation("admin_traite")
+  demandes_ri        DemandeReparation[] @relation("ri_demandes")
+  historique_actions HistoriqueActions[]
+  etablissement      Etablissement?      @relation(fields: [id_etab], references: [id_etab])
+
+  @@index([id_etab], map: "utilisateurs_id_etab_fkey")
+  @@map("utilisateurs")
+}
+
+model Etablissement {
+  id_etab                  Int                     @id @default(autoincrement())
+  nom                      String                  @db.VarChar(100)
+  dren                     String?                 @db.VarChar(100)
+  cisco                    String?                 @db.VarChar(100)
+  zap                      String?                 @db.VarChar(100)
+  nom_directeur            String?                 @db.VarChar(100)
+  contact_directeur        String?                 @db.VarChar(50)
+  email_directeur          String?                 @db.VarChar(100)
+  nom_responsable_info     String?                 @db.VarChar(100)
+  contact_responsable_info String?                 @db.VarChar(50)
+  email_responsable_info   String?                 @db.VarChar(100)
+  actif                    Boolean                 @default(true)
+  date_creation            DateTime                @default(now())
+  demandes                 DemandeReparation[]
+  historique_actions       HistoriqueActions[]
+  stock_etablissements     StockEtablissement[]
+  visites                  Visite[]
+  utilisateurs             Utilisateur[]
+  accessibilites           AccessibiliteMateriel[]
+  etats                    EtatMateriel[]
+
+  @@map("etablissements")
+}
+
+model TypeMateriel {
+  id_type     Int        @id @default(autoincrement())
+  libelle     String     @unique @db.VarChar(50)
+  prefix      String     @db.VarChar(10)
+  displayName String     @db.VarChar(50)
+  materiels   Materiel[]
+
+  @@map("types_materiel")
+}
+
+model Materiel {
+  id_materiel          Int                     @id @default(autoincrement())
+  id_type              Int
+  reference            String                  @unique @db.VarChar(50)
+  description          String?
+  quantite             Int                     @default(1)
+  date_ajout           DateTime                @default(now())
+  accessibilites       AccessibiliteMateriel[]
+  demandes             DemandeReparation[]
+  etats                EtatMateriel[]
+  type                 TypeMateriel            @relation(fields: [id_type], references: [id_type])
+  stock_central        StockCentral[]
+  historique_actions   HistoriqueActions[]
+  stock_etablissements StockEtablissement[]
+
+  @@index([id_type], map: "materiels_id_type_fkey")
+  @@map("materiels")
+}
+
+model StockCentral {
+  id_stock_central Int      @id @default(autoincrement())
+  id_materiel      Int      @unique
+  quantite         Int
+  date_mouvement   DateTime @default(now())
+  materiel         Materiel @relation(fields: [id_materiel], references: [id_materiel], onDelete: Cascade)
+
+  @@index([id_materiel], map: "stock_central_id_materiel_fkey")
+  @@map("stock_central")
+}
+
+model StockEtablissement {
+  id_stock_etab  Int           @id @default(autoincrement())
+  id_etab        Int
+  id_materiel    Int
+  quantite       Int
+  date_reception DateTime      @default(now())
+  etablissement  Etablissement @relation(fields: [id_etab], references: [id_etab])
+  materiel       Materiel      @relation(fields: [id_materiel], references: [id_materiel], onDelete: Cascade)
+
+  @@unique([id_etab, id_materiel])
+  @@index([id_materiel], map: "stock_etablissements_id_materiel_fkey")
+  @@map("stock_etablissements")
+}
+
+// ✅ CORRIGÉ : EtatMateriel sans colonne 'etat' redondante
+model EtatMateriel {
+  id_etat         Int           @id @default(autoincrement())
+  id_materiel     Int
+  id_etab         Int
+  // ❌ SUPPRIMÉ : etat String @db.VarChar(20)  // Redondant avec en_marche, en_panne, en_reparation
+  en_marche       Int           @default(0)
+  en_panne        Int           @default(0)
+  en_reparation   Int           @default(0)
+  commentaire     String?
+  date_changement DateTime      @default(now())
+  materiel        Materiel      @relation(fields: [id_materiel], references: [id_materiel], onDelete: Cascade)
+  etablissement   Etablissement @relation(fields: [id_etab], references: [id_etab])
+
+  @@unique([id_materiel, id_etab])
+  @@index([id_materiel])
+  @@index([id_etab])
+  @@map("etats_materiel")
+}
+
+// ✅ CORRIGÉ : AccessibiliteMateriel sans colonne 'accessible' redondante
+model AccessibiliteMateriel {
+  id_accessibilite Int           @id @default(autoincrement())
+  id_materiel      Int
+  id_etab          Int
+  // ❌ SUPPRIMÉ : accessible Boolean @default(false)  // Redondant avec connecte et non_connecte
+  connecte         Int           @default(0)
+  non_connecte     Int           @default(0)
+  commentaire      String?
+  date_changement  DateTime      @default(now())
+  materiel         Materiel      @relation(fields: [id_materiel], references: [id_materiel], onDelete: Cascade)
+  etablissement    Etablissement @relation(fields: [id_etab], references: [id_etab])
+
+  @@unique([id_materiel, id_etab])
+  @@index([id_materiel])
+  @@index([id_etab])
+  @@map("accessibilites_materiel")
+}
+
+model DemandeReparation {
+  id_demande      Int           @id @default(autoincrement())
+  id_etab         Int
+  id_ri           Int
+  id_materiel     Int
+  quantite        Int           @default(0)
+  type_panne      String?       @db.VarChar(50)
+  urgence         String?       @db.VarChar(20)
+  description     String        @db.Text
+  statut          String        @default("en_attente") @db.VarChar(30)
+  date_demande    DateTime      @default(now())
+  date_traitement DateTime?
+  id_admin        Int?
+  motif_refus     String?       @db.Text
+  admin           Utilisateur?  @relation("admin_traite", fields: [id_admin], references: [id_user])
+  etablissement   Etablissement @relation(fields: [id_etab], references: [id_etab])
+  materiel        Materiel      @relation(fields: [id_materiel], references: [id_materiel], onDelete: Cascade)
+  ri              Utilisateur   @relation("ri_demandes", fields: [id_ri], references: [id_user])
+
+  @@index([id_etab])
+  @@index([statut])
+  @@index([id_admin], map: "demandes_reparation_id_admin_fkey")
+  @@index([id_materiel], map: "demandes_reparation_id_materiel_fkey")
+  @@index([id_ri], map: "demandes_reparation_id_ri_fkey")
+  @@map("demandes_reparation")
+}
+
+model HistoriqueActions {
+  id_historique    Int            @id @default(autoincrement())
+  date_action      DateTime       @default(now())
+  id_utilisateur   Int
+  nom_utilisateur  String?        @db.VarChar(100)
+  role_utilisateur String?        @db.VarChar(30)
+  id_etab          Int?
+  id_materiel      Int?
+  action_type      String         @db.VarChar(50)
+  entite_type      String         @db.VarChar(50)
+  entite_id        Int?
+  details          String?        @db.Text
+  ip_address       String?        @db.VarChar(45)
+  user_agent       String?        @db.Text
+  etablissement    Etablissement? @relation(fields: [id_etab], references: [id_etab])
+  utilisateur      Utilisateur    @relation(fields: [id_utilisateur], references: [id_user])
+  materiel         Materiel?      @relation(fields: [id_materiel], references: [id_materiel], onDelete: SetNull)
+
+  @@index([date_action])
+  @@index([id_utilisateur])
+  @@index([action_type])
+  @@index([id_etab])
+  @@index([id_materiel])
+  @@map("historique_actions")
+}
+
+model Visite {
+  id_visite     Int            @id @default(autoincrement())
+  id_etab       Int
+  date_visite   DateTime
+  objet         String
+  observations  String?
+  rapport       String?
+  statut        String         @default("planifiee")
+  date_creation DateTime       @default(now())
+  etablissement Etablissement? @relation(fields: [id_etab], references: [id_etab])
+
+  @@index([id_etab])
+  @@map("visites")
+}
