@@ -5,7 +5,6 @@ generator client {
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
-  directUrl= env("DATABASE_PUBLIC_URL")
 }
 
 model Utilisateur {
