@@ -76,7 +76,7 @@ const Login = () => {
       <div className="max-w-5xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
         <div className="md:w-1/2 bg-green p-8 text-white flex flex-col justify-center items-center">
           <div className="text-center">
-            <img src='src/assets/educmad.png' alt="Logo" style={{ width: '400px', height: 'auto' }} />
+            <img src={educmadLogo} alt="Logo" style={{ width: '400px', height: 'auto' }} />
           </div>
         </div>
 
